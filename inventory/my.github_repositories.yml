@@ -1,5 +1,0 @@
----
-plugin: github_repositories
-url: 'https://github.com'
-access_token: ''
-org: saltyblu

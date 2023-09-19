@@ -13,26 +13,29 @@ DOCUMENTATION = '''
         - Get repositories from the GitHub API and store them as hosts.
         - The primary IP addresses contains the Git Repository clone url.
     options:
-      url:
-        description: GitHub URL.
-        default: 'https://github.com/'
-        env:
-            - name: GITHUB_URL
-      access_token:
-        description: GitHub authentication PAT.
-        required: true
-        env:
-            - name: GITHUB_ACCESS_TOKEN
-            - type: str
-      org:
-        description: GitHub organization.
-        required: true
-        env:
-            - name: GITHUB_ORG
-            - type: str
-      cache:
-        description: The Cache option
-        required: false
+        url:
+            description: GitHub URL.
+            default: 'https://github.com/'
+            env:
+                - name: GITHUB_URL
+        access_token:
+            description: GitHub authentication PAT.
+            required: true
+            env:
+                - name: GITHUB_ACCESS_TOKEN
+                - type: str
+        org:
+            description: GitHub organization.
+            required: true
+            env:
+                - name: GITHUB_ORG
+                - type: str
+        search_filter:
+            description: Repository Filter
+            default: ""
+        cache:
+            description: The Cache option
+            required: false
 '''
 
 EXAMPLES = '''
@@ -88,6 +91,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.github_url = str(self.get_option('url'))
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
+        self.repository_filter = str(self.get_option('search_filter'))
         #self.repository_filter = str(self.get_option('repository_filter'))
         #self.cache_key = self.get_cache_key(path)
         #self.use_cache = cache and self.get_option('cache')
@@ -97,9 +101,11 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             r = g.search_repositories(self.repository_filter, owner=self.org)
             # add main group as inventory group
             for project in r:
-                self.inventory.add_host(project.ssh_url_to_repo, safe_subgroup)
+                hostname = self.inventory.add_host(str(project.id), "all")
                 # add basic vars to host
-                self.inventory.set_variable(project.ssh_url_to_repo, 'ansible_host', 'localhost')
+                self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
+                self.inventory.set_variable(hostname, 'git_name', project.name)
 
                 # add all infos of gitlab api to host as vars
                 #for attr, value in project.__dict__.items():
