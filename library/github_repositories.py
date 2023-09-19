@@ -36,6 +36,12 @@ DOCUMENTATION = '''
         cache:
             description: The Cache option
             required: false
+        regex_filter:
+            description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
+            default: ""
+        group_by_codeowners:
+            description: Creates groups based on the Codeowners file
+            defaults: False
 '''
 
 EXAMPLES = '''
@@ -46,6 +52,7 @@ repository_filter: *-deployment
 '''
 
 from github import Github
+import re
 #from ansible.errors import AnsibleError
 from ansible.module_utils.common.text.converters import to_text
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_group_name
@@ -80,6 +87,23 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
     #        self.load_cache_plugin()
     #        self._cache.get(self.cache_key, {})
 
+    # def extract_codeowner(self, repository):
+    #     try:
+    #         codeowners_file = repository.get_contents("CODEOWNERS")
+    #         codeowners_content = codeowners_file.decoded_content.decode('utf-8') 
+    #         codeowners = [line.strip() for line in codeowners_content.split('\n') if line.strip().startswith('* ')]
+    #         return codeowners[0].replace("* ", "").replace("@", "").replace("/", "_").replace("-", "_").split(" ")
+    #     except Exception as e:
+    #         return False
+
+    def parse_groupname(self, repository, regex_filter):
+        try:
+            match = re.findall(regex_filter, repository.name)
+            return match[0]
+        except Exception as e:
+            return False
+
+
     def parse(self, inventory, loader, path, cache=True):
 
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -92,6 +116,8 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
         self.repository_filter = str(self.get_option('search_filter'))
+        self.group_by_codeowners = bool(self.get_option('group_by_codeowners'))
+        self.regex_filter = str(self.get_option('regex_filter'))
         #self.repository_filter = str(self.get_option('repository_filter'))
         #self.cache_key = self.get_cache_key(path)
         #self.use_cache = cache and self.get_option('cache')
@@ -100,12 +126,30 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         try:
             r = g.search_repositories(self.repository_filter, owner=self.org)
             # add main group as inventory group
+            group = "all"
             for project in r:
-                hostname = self.inventory.add_host(str(project.id), "all")
+                if not project.name.startswith(self.repository_filter):
+                    continue
+                # if self.group_by_codeowners:
+                #     codeowners = self.extract_codeowner(project)
+                #     if codeowners:
+                #         group = self.inventory.add_group(str(codeowners[0]))
+                #     else:
+                #         group = "ungrouped"
+                if self.regex_filter != "":
+                    groupname = self.parse_groupname(project, self.regex_filter)
+                else:
+                    groupname = "ungrouped"
+                group = self.inventory.add_group(str(groupname).replace("-", "_"))
+
+                hostname = self.inventory.add_host(str(project.id), group)
                 # add basic vars to host
                 self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
                 self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
                 self.inventory.set_variable(hostname, 'git_name', project.name)
+                self.inventory.set_variable(hostname, 'git_html_url', project.html_url)
+                # if self.group_by_codeowners and codeowners:
+                #     self.inventory.set_variable(hostname, 'codeowners', codeowners)
 
                 # add all infos of gitlab api to host as vars
                 #for attr, value in project.__dict__.items():
