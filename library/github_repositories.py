@@ -5,8 +5,10 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = '''
-    author: Volker Schmitz (saltyblu)
-    name: github--repository-inventory
+    author: 
+        - Volker Schmitz (saltyblu)
+        - Martin Soentgenrath (merin80)
+    name: github-repository-inventory
     short_description: GitHub repositories as inventory source
     version_added: 0.0.0
     description:
@@ -113,7 +115,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
         self.repository_filter = str(self.get_option('search_filter'))
-        self.group_by_codeowners = bool(self.get_option('group_by_codeowners'))
         self.regex_filter = str(self.get_option('regex_filter'))
         #self.repository_filter = str(self.get_option('repository_filter'))
         #self.cache_key = self.get_cache_key(path)
@@ -127,34 +128,30 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             for project in r:
                 if not project.name.startswith(self.repository_filter):
                     continue
-                # if self.group_by_codeowners:
-                #     codeowners = self.extract_codeowner(project)
-                #     if codeowners:
-                #         group = self.inventory.add_group(str(codeowners[0]))
-                #     else:
-                #         group = "ungrouped"
 
+                groupnames = []
                 topics = project._rawData['topics']
                 team = next((topic for topic in topics if topic.startswith("team-")), None)
                 if team != None:
-                    groupname = team
+                    groupnames.append(team)
                 else:
-                    groupname = "unassigned"
-                group = self.inventory.add_group(str(groupname).replace("-", "_"))
+                    groupnames.append("unassigned")
 
-#                if self.regex_filter != "":
-#                    groupname = self.parse_groupname(project, self.regex_filter)
-#                else:
-#                    groupname = "ungrouped"
-#                group = self.inventory.add_group(str(groupname).replace("-", "_"))
+                if self.regex_filter != "":
+                    groupnames.append(self.parse_groupname(project, self.regex_filter))
+                else:
+                    if not "unassigned" in groupnames:
+                        groupnames.append("unassigned")
+                for groupentry in groupnames:
+                    group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
-                hostname = self.inventory.add_host(str(project.id), group)
-                # add basic vars to host
-                self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
-                self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
-                self.inventory.set_variable(hostname, 'git_name', project.name)
-                self.inventory.set_variable(hostname, 'git_html_url', project.html_url)
-                self.inventory.set_variable(hostname, 'topics', topics)
+                    hostname = self.inventory.add_host(str(project.id), group)
+                    # add basic vars to host
+                    self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                    self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
+                    self.inventory.set_variable(hostname, 'git_name', project.name)
+                    self.inventory.set_variable(hostname, 'git_html_url', project.html_url)
+                    self.inventory.set_variable(hostname, 'topics', topics)
                 # if self.group_by_codeowners and codeowners:
                 #     self.inventory.set_variable(hostname, 'codeowners', codeowners)
 
