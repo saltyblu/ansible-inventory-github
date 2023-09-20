@@ -39,9 +39,6 @@ DOCUMENTATION = '''
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
-        group_by_codeowners:
-            description: Creates groups based on the Codeowners file
-            defaults: False
 '''
 
 EXAMPLES = '''
@@ -136,11 +133,20 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 #         group = self.inventory.add_group(str(codeowners[0]))
                 #     else:
                 #         group = "ungrouped"
-                if self.regex_filter != "":
-                    groupname = self.parse_groupname(project, self.regex_filter)
+
+                topics = project._rawData['topics']
+                team = next((topic for topic in topics if topic.startswith("team-")), None)
+                if team != None:
+                    groupname = team
                 else:
-                    groupname = "ungrouped"
+                    groupname = "unassigned"
                 group = self.inventory.add_group(str(groupname).replace("-", "_"))
+
+#                if self.regex_filter != "":
+#                    groupname = self.parse_groupname(project, self.regex_filter)
+#                else:
+#                    groupname = "ungrouped"
+#                group = self.inventory.add_group(str(groupname).replace("-", "_"))
 
                 hostname = self.inventory.add_host(str(project.id), group)
                 # add basic vars to host
@@ -148,6 +154,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
                 self.inventory.set_variable(hostname, 'git_name', project.name)
                 self.inventory.set_variable(hostname, 'git_html_url', project.html_url)
+                self.inventory.set_variable(hostname, 'topics', topics)
                 # if self.group_by_codeowners and codeowners:
                 #     self.inventory.set_variable(hostname, 'codeowners', codeowners)
 
