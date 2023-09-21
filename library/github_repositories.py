@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = '''
-    author: 
+    author:
         - Volker Schmitz (saltyblu)
         - Martin Soentgenrath (merin80)
     name: github-repository-inventory
@@ -14,6 +14,8 @@ DOCUMENTATION = '''
     description:
         - Get repositories from the GitHub API and store them as hosts.
         - The primary IP addresses contains the Git Repository clone url.
+    extends_documentation_fragment:
+      - inventory_cache
     options:
         url:
             description: GitHub URL.
@@ -38,6 +40,7 @@ DOCUMENTATION = '''
         cache:
             description: The Cache option
             required: false
+            default: False
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
@@ -57,7 +60,7 @@ from ansible.module_utils.common.text.converters import to_text
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_group_name
 
 class InventoryModule(BaseInventoryPlugin, Cacheable):
-    ''' Host inventory parser for ansible using cobbler as source. '''
+    ''' Host inventory parser for ansible using GitHub as source. '''
 
     NAME = 'github_repositories'
 
@@ -89,7 +92,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
     # def extract_codeowner(self, repository):
     #     try:
     #         codeowners_file = repository.get_contents("CODEOWNERS")
-    #         codeowners_content = codeowners_file.decoded_content.decode('utf-8') 
+    #         codeowners_content = codeowners_file.decoded_content.decode('utf-8')
     #         codeowners = [line.strip() for line in codeowners_content.split('\n') if line.strip().startswith('* ')]
     #         return codeowners[0].replace("* ", "").replace("@", "").replace("/", "_").replace("-", "_").split(" ")
     #     except Exception as e:
@@ -104,11 +107,19 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
 
     def parse(self, inventory, loader, path, cache=True):
-
         super(InventoryModule, self).parse(inventory, loader, path)
+
+        self.load_cache_plugin()
+        cache_key = self.get_cache_key(path)
 
         # read config from file, this sets 'options'
         self._read_config_data(path)
+
+        user_cache_setting = self.get_option('cache')
+        # read if the user has caching enabled and the cache isn't being refreshed
+        attempt_to_read_cache = user_cache_setting and cache
+        # update if the user has caching enabled and the cache is being refreshed; update this value to True if the cache has expired below
+        cache_needs_update = user_cache_setting and not cache
 
         # get connection host
         self.github_url = str(self.get_option('url'))
@@ -119,10 +130,33 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         #self.repository_filter = str(self.get_option('repository_filter'))
         #self.cache_key = self.get_cache_key(path)
         #self.use_cache = cache and self.get_option('cache')
+        if attempt_to_read_cache:
+            try:
+                results = self._cache[cache_key]
+            except KeyError:
+                # This occurs if the cache_key is not in the cache or if the cache_key expired, so the cache needs to be updated
+                cache_needs_update = True
+        if not attempt_to_read_cache or cache_needs_update:
+            # parse the provided inventory source
+            results = self.get_inventory()
+        if cache_needs_update:
+            self._cache[cache_key] = results
 
+        self.populate(results)
+
+    def get_inventory(self):
         g = Github(self.access_token)
         try:
             r = g.search_repositories(self.repository_filter, owner=self.org)
+        except Exception as e:
+            print(
+                f"Error: {e}",
+            )
+            return
+        return r
+
+    def populate(self, r):
+        try:
             # add main group as inventory group
             group = "all"
             for project in r:
