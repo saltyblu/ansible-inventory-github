@@ -76,7 +76,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             datefmt='%H:%M:%S',
             level=logging.DEBUG)
 
-        self.logger = logging.getLogger('DynamicInventory')        
+        self.logger = logging.getLogger('DynamicInventory')
 
     def verify_file(self, path):
         valid = False
@@ -147,22 +147,24 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         g = Github(self.access_token)
         repos = []
         try:
-            r = g.search_repositories(self.repository_filter, owner=self.org, sort="updated", )
+            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated")
         except Exception as e:
-            self.logger.error(f'Caught a {e.__class__.__name_} Exception while searching: {e}')
+            self.logger.error(f'Caught an Exception while searching: {e}')
             print(
                 f"Error: {e}",
             )
             return
         try:
             for repository in r:
+                self.logger.debug(f'Counter: {count} - {repository.name}')
                 repos.append(repository._rawData)
-                if count == 99:
+                if count%10 == 0:
+                    self.logger.debug(f'Reached {count} repositories, sleeping 1 second')
                     time.sleep(1)
                 count += 1
             return repos
         except Exception as e:
-            self.logger.error(f'Caught a {e.__class__.__name_} Exception while iterating Repositories: {e}')
+            self.logger.error(f'Caught an Exception while iterating Repositories: {e}')
 
     def populate(self, r):
         try:
@@ -185,6 +187,8 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 else:
                     if not "unassigned" in groupnames:
                         groupnames.append("unassigned")
+                self.logger.debug(f'Name: {project["name"]}')
+                groupnames.append(project['name'])
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 

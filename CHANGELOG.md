@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased]
+## [Unreleased]
 
 ### Changed
 
 - Function get_inventory is now get_repositories and return an array containing _rawData for each found repository
+- sample inventory to own folder inventory.sample
 
 ### Added
 

@@ -2,4 +2,6 @@
 .env
 library/.env
 inventory/my.github_repositories.yml
+inventory/*
 dynamic_inventory.log
+.vscode
