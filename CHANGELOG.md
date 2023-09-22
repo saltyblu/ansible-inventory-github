@@ -9,3 +9,7 @@
 ### Added
 
 - Logging
+
+### Fixed
+
+- search_repositories returned duplicates, this was fixed by adding `sort="updated"`
