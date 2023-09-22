@@ -2,3 +2,4 @@
 .env
 library/.env
 inventory/my.github_repositories.yml
+dynamic_inventory.log
