@@ -9,7 +9,12 @@
 ### Added
 
 - Logging
+- Caching Parameters to ansible.cfg
 
 ### Fixed
 
 - search_repositories returned duplicates, this was fixed by adding `sort="updated"`
+
+### Removed
+
+- outdated, commented code

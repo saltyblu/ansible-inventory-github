@@ -87,33 +87,12 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.display.vvv('Skipping due to inventory source not ending with "github-inventory.yaml/.yml"')
         return valid
 
-    #def _init_cache(self):
-    #    if self.cache_key not in self._cache:
-    #        self._cache[self.cache_key] = {}
-
-    #def _reload_cache(self):
-    #    if self.get_option('cache_fallback'):
-    #        self.display.vvv('Cannot connect to server, loading cache\n')
-    #        self._options['cache_timeout'] = 0
-    #        self.load_cache_plugin()
-    #        self._cache.get(self.cache_key, {})
-
-    # def extract_codeowner(self, repository):
-    #     try:
-    #         codeowners_file = repository.get_contents("CODEOWNERS")
-    #         codeowners_content = codeowners_file.decoded_content.decode('utf-8')
-    #         codeowners = [line.strip() for line in codeowners_content.split('\n') if line.strip().startswith('* ')]
-    #         return codeowners[0].replace("* ", "").replace("@", "").replace("/", "_").replace("-", "_").split(" ")
-    #     except Exception as e:
-    #         return False
-
     def parse_groupname(self, repository, regex_filter):
         try:
             match = re.findall(regex_filter, repository['name'])
             return match[0]
         except Exception as e:
             return False
-
 
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path)
@@ -140,9 +119,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.org = str(self.get_option('org'))
         self.repository_filter = str(self.get_option('search_filter'))
         self.regex_filter = str(self.get_option('regex_filter'))
-        #self.repository_filter = str(self.get_option('repository_filter'))
-        #self.cache_key = self.get_cache_key(path)
-        #self.use_cache = cache and self.get_option('cache')
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
             try:
@@ -155,7 +131,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         if not attempt_to_read_cache or cache_needs_update:
             self.logger.debug("Not attempting to read cache")
             # parse the provided inventory source
-            results = self.get_inventory()
+            results = self.get_repositories()
             self.logger.debug(f'Results: {results}')
         if cache_needs_update:
             try:
@@ -166,20 +142,27 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
         self.populate(results)
 
-    def get_inventory(self):
+    def get_repositories(self):
+        count = 1
         g = Github(self.access_token)
         repos = []
         try:
             r = g.search_repositories(self.repository_filter, owner=self.org, sort="updated")
         except Exception as e:
-            self.logger.error(f'Exception while searching: {e}')
+            self.logger.error(f'Caught a {e.__class__.__name_} Exception while searching: {e}')
             print(
                 f"Error: {e}",
             )
             return
-        for repository in r:
-            repos.append(repository._rawData)
-        return repos
+        try:
+            for repository in r:
+                repos.append(repository._rawData)
+                if count == 99:
+                    time.sleep(1)
+                count += 1
+            return repos
+        except Exception as e:
+            self.logger.error(f'Caught a {e.__class__.__name_} Exception while iterating Repositories: {e}')
 
     def populate(self, r):
         try:
@@ -206,18 +189,11 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
                     hostname = self.inventory.add_host(str(project['id']), group)
-                    # add basic vars to host
-                    self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
-                    self.inventory.set_variable(hostname, 'git_url', project['ssh_url'])
-                    self.inventory.set_variable(hostname, 'git_name', project['name'])
-                    self.inventory.set_variable(hostname, 'git_html_url', project['html_url'])
-                    self.inventory.set_variable(hostname, 'topics', topics)
-                # if self.group_by_codeowners and codeowners:
-                #     self.inventory.set_variable(hostname, 'codeowners', codeowners)
 
-                # add all infos of gitlab api to host as vars
-                #for attr, value in project.__dict__.items():
-                #    self.inventory.set_variable(project.ssh_url_to_repo, attr, value)
+                    self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                    for key, value in project.items():
+                        self.inventory.set_variable(hostname, key, value)
+
         except Exception as e:
             self.logger.error(f'Exception: {e}')
             print(
