@@ -147,7 +147,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         g = Github(self.access_token)
         repos = []
         try:
-            r = g.search_repositories(self.repository_filter, owner=self.org, sort="updated")
+            r = g.search_repositories(self.repository_filter, owner=self.org, sort="updated", )
         except Exception as e:
             self.logger.error(f'Caught a {e.__class__.__name_} Exception while searching: {e}')
             print(
@@ -191,6 +191,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     hostname = self.inventory.add_host(str(project['id']), group)
 
                     self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                    self.inventory.set_variable(hostname, 'ansible_connection', 'local')
                     for key, value in project.items():
                         self.inventory.set_variable(hostname, key, value)
 
