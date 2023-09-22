@@ -4,3 +4,5 @@ url: "https://github.com"
 access_token: "github_pat_123*"
 org: "myorg"
 search_filter: ""
+regex_filter: ^project-\w+
+cache: True
