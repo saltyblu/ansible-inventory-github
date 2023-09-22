@@ -15,7 +15,7 @@ DOCUMENTATION = '''
         - Get repositories from the GitHub API and store them as hosts.
         - The primary IP addresses contains the Git Repository clone url.
     extends_documentation_fragment:
-      - inventory_cache
+        - inventory_cache
     options:
         url:
             description: GitHub URL.
@@ -55,6 +55,8 @@ repository_filter: *-deployment
 
 from github import Github
 import re
+import logging
+import time
 #from ansible.errors import AnsibleError
 from ansible.module_utils.common.text.converters import to_text
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_group_name
@@ -68,6 +70,13 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         super(InventoryModule, self).__init__()
         self.cache_key = None
         self.connection = None
+        logging.basicConfig(filename="dynamic_inventory.log",
+            filemode='a',
+            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+            datefmt='%H:%M:%S',
+            level=logging.DEBUG)
+
+        self.logger = logging.getLogger('DynamicInventory')        
 
     def verify_file(self, path):
         valid = False
@@ -100,7 +109,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
     def parse_groupname(self, repository, regex_filter):
         try:
-            match = re.findall(regex_filter, repository.name)
+            match = re.findall(regex_filter, repository['name'])
             return match[0]
         except Exception as e:
             return False
@@ -111,15 +120,19 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
         self.load_cache_plugin()
         cache_key = self.get_cache_key(path)
+        self.logger.debug(f'The Cache Key is: {cache_key}')
 
         # read config from file, this sets 'options'
         self._read_config_data(path)
 
         user_cache_setting = self.get_option('cache')
+        self.logger.debug(f'User Cache Setting is: {user_cache_setting}')
         # read if the user has caching enabled and the cache isn't being refreshed
         attempt_to_read_cache = user_cache_setting and cache
+        self.logger.debug(f'Attempt to read cache is: {attempt_to_read_cache}')
         # update if the user has caching enabled and the cache is being refreshed; update this value to True if the cache has expired below
         cache_needs_update = user_cache_setting and not cache
+        self.logger.debug(f'Cache needs update is: {cache_needs_update}')
 
         # get connection host
         self.github_url = str(self.get_option('url'))
@@ -131,40 +144,53 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         #self.cache_key = self.get_cache_key(path)
         #self.use_cache = cache and self.get_option('cache')
         if attempt_to_read_cache:
+            self.logger.debug("Attempting to read cache")
             try:
                 results = self._cache[cache_key]
-            except KeyError:
+                self.logger.debug(f'Results: {results}')
+            except KeyError as e:
                 # This occurs if the cache_key is not in the cache or if the cache_key expired, so the cache needs to be updated
                 cache_needs_update = True
+                self.logger.error(f'Exception while Updating cache: {e}')
         if not attempt_to_read_cache or cache_needs_update:
+            self.logger.debug("Not attempting to read cache")
             # parse the provided inventory source
             results = self.get_inventory()
+            self.logger.debug(f'Results: {results}')
         if cache_needs_update:
-            self._cache[cache_key] = results
+            try:
+                self._cache[cache_key] = results
+                self.logger.debug(f'Cached Result as: {self._cache}')
+            except Exception as e:
+                self.logger.error(f'Exception on Cache Update: {e}')
 
         self.populate(results)
 
     def get_inventory(self):
         g = Github(self.access_token)
+        repos = []
         try:
-            r = g.search_repositories(self.repository_filter, owner=self.org)
+            r = g.search_repositories(self.repository_filter, owner=self.org, sort="updated")
         except Exception as e:
+            self.logger.error(f'Exception while searching: {e}')
             print(
                 f"Error: {e}",
             )
             return
-        return r
+        for repository in r:
+            repos.append(repository._rawData)
+        return repos
 
     def populate(self, r):
         try:
             # add main group as inventory group
             group = "all"
             for project in r:
-                if not project.name.startswith(self.repository_filter):
+                if not project['name'].startswith(self.repository_filter):
                     continue
 
                 groupnames = []
-                topics = project._rawData['topics']
+                topics = project['topics']
                 team = next((topic for topic in topics if topic.startswith("team-")), None)
                 if team != None:
                     groupnames.append(team)
@@ -179,12 +205,12 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
-                    hostname = self.inventory.add_host(str(project.id), group)
+                    hostname = self.inventory.add_host(str(project['id']), group)
                     # add basic vars to host
                     self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
-                    self.inventory.set_variable(hostname, 'git_url', project.ssh_url)
-                    self.inventory.set_variable(hostname, 'git_name', project.name)
-                    self.inventory.set_variable(hostname, 'git_html_url', project.html_url)
+                    self.inventory.set_variable(hostname, 'git_url', project['ssh_url'])
+                    self.inventory.set_variable(hostname, 'git_name', project['name'])
+                    self.inventory.set_variable(hostname, 'git_html_url', project['html_url'])
                     self.inventory.set_variable(hostname, 'topics', topics)
                 # if self.group_by_codeowners and codeowners:
                 #     self.inventory.set_variable(hostname, 'codeowners', codeowners)
@@ -193,6 +219,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 #for attr, value in project.__dict__.items():
                 #    self.inventory.set_variable(project.ssh_url_to_repo, attr, value)
         except Exception as e:
+            self.logger.error(f'Exception: {e}')
             print(
                 f"Error: {e}",
             )
