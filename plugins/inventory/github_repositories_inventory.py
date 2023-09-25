@@ -27,13 +27,11 @@ DOCUMENTATION = '''
             required: true
             env:
                 - name: GITHUB_ACCESS_TOKEN
-                - type: str
         org:
             description: GitHub organization.
             required: true
             env:
                 - name: GITHUB_ORG
-                - type: str
         search_filter:
             description: Repository Filter
             default: ""
