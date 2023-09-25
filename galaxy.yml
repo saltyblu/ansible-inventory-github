@@ -1,0 +1,21 @@
+---
+namespace: saltyblu
+name: github
+# the version key is generated during the release by Zuul
+# https://github.com/ansible-network/releases/tree/master/ansible_releases/cmd
+# A script based on https://pypi.org/project/pbr/ will generate the version
+# key. The version value depends on the tag or the last git tag.
+version: null
+readme: README.md
+authors:
+  - Ansible (https://github.com/ansible)
+description:
+license:
+  - GPL-3.0-or-later
+  - BSD-2-Clause
+tags:
+  - github
+dependencies: {}
+repository: https://github.com/saltyblu/ansible-inventory-github.git
+homepage: https://github.com/saltyblu/ansible-inventory-github
+issues: https://github.com/ansible-collections/community.vmware/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc
