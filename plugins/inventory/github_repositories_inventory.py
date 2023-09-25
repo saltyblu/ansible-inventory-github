@@ -182,7 +182,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     if not "unassigned" in groupnames:
                         groupnames.append("unassigned")
                 self.logger.debug(f'Name: {project["name"]}')
-                groupnames.append(project['name'])
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
