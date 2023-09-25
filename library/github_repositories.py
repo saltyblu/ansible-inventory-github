@@ -76,17 +76,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.display.vvv('Skipping due to inventory source not ending with "github-inventory.yaml/.yml"')
         return valid
 
-    #def _init_cache(self):
-    #    if self.cache_key not in self._cache:
-    #        self._cache[self.cache_key] = {}
-
-    #def _reload_cache(self):
-    #    if self.get_option('cache_fallback'):
-    #        self.display.vvv('Cannot connect to server, loading cache\n')
-    #        self._options['cache_timeout'] = 0
-    #        self.load_cache_plugin()
-    #        self._cache.get(self.cache_key, {})
-
     # def extract_codeowner(self, repository):
     #     try:
     #         codeowners_file = repository.get_contents("CODEOWNERS")
