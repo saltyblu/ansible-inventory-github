@@ -158,9 +158,9 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             for repository in r:
                 self.logger.debug(f'Counter: {count} - {repository.name}')
                 repos.append(repository._rawData)
-                if count%10 == 0:
-                    self.logger.debug(f'Reached {count} repositories, sleeping 1 second')
-                    time.sleep(1)
+#                if count%10 == 0:
+#                    self.logger.debug(f'Reached {count} repositories, sleeping 1 second')
+#                    time.sleep(1)
                 count += 1
             return repos
         except Exception as e:
