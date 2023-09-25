@@ -18,4 +18,3 @@ tags:
 dependencies: {}
 repository: https://github.com/saltyblu/ansible-inventory-github.git
 homepage: https://github.com/saltyblu/ansible-inventory-github
-issues: https://github.com/ansible-collections/community.vmware/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc
