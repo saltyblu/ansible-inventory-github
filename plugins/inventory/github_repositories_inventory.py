@@ -56,7 +56,6 @@ repository_filter: *-deployment
 from github import Github
 import re
 import logging
-import time
 #from ansible.errors import AnsibleError
 from ansible.module_utils.common.text.converters import to_text
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_group_name
@@ -64,7 +63,7 @@ from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_gr
 class InventoryModule(BaseInventoryPlugin, Cacheable):
     ''' Host inventory parser for ansible using GitHub as source. '''
 
-    NAME = 'github_repositories'
+    NAME = 'github_repositories_inventory'
 
     def __init__(self):
         super(InventoryModule, self).__init__()
@@ -74,7 +73,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             filemode='a',
             format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
             datefmt='%H:%M:%S',
-            level=logging.DEBUG)
+            level=logging.INFO)
 
         self.logger = logging.getLogger('DynamicInventory')
 
@@ -84,7 +83,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             if path.endswith(('github_repositories.yaml', 'github_repositories.yml')):
                 valid = True
             else:
-                self.display.vvv('Skipping due to inventory source not ending with "github-inventory.yaml/.yml"')
+                self.display.vvv('Skipping due to inventory source not ending with "github_repositories.yaml/.yml"')
         return valid
 
     def parse_groupname(self, repository, regex_filter):
@@ -158,9 +157,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             for repository in r:
                 self.logger.debug(f'Counter: {count} - {repository.name}')
                 repos.append(repository._rawData)
-#                if count%10 == 0:
-#                    self.logger.debug(f'Reached {count} repositories, sleeping 1 second')
-#                    time.sleep(1)
                 count += 1
             return repos
         except Exception as e:
@@ -192,7 +188,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
-                    hostname = self.inventory.add_host(str(project['id']), group)
+                    hostname = self.inventory.add_host(str(project['name']), group)
 
                     self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
                     self.inventory.set_variable(hostname, 'ansible_connection', 'local')
