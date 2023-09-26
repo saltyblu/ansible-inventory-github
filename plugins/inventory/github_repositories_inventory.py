@@ -35,6 +35,8 @@ DOCUMENTATION = '''
         search_filter:
             description: Repository Filter
             default: ""
+            env:
+                - name: GITHUB_SEARCH_FILTER
         cache:
             description: The Cache option
             required: false
@@ -42,6 +44,8 @@ DOCUMENTATION = '''
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
+            env:
+                - name: GITHUB_REGEX_FILTER
 '''
 
 EXAMPLES = '''
