@@ -191,10 +191,12 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
                     hostname = self.inventory.add_host(str(project['name']), group)
 
-                    self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
-                    self.inventory.set_variable(hostname, 'ansible_connection', 'local')
-                    for key, value in project.items():
-                        self.inventory.set_variable(hostname, key, value)
+                self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                self.inventory.set_variable(hostname, 'ansible_connection', 'local')
+                for key, value in project.items():
+                    self.inventory.set_variable(hostname, key, value)
+                if team != None:
+                    self.inventory.set_variable(hostname, 'team', team)
 
         except Exception as e:
             self.logger.error(f'Exception: {e}')
