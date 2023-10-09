@@ -21,12 +21,12 @@ DOCUMENTATION = '''
             description: GitHub URL.
             default: 'https://github.com/'
             env:
-                - name: GITHUB_URL
+                - name: GITHUB_INVENTORY_URL
         access_token:
             description: GitHub authentication PAT.
             required: true
             env:
-                - name: GITHUB_ACCESS_TOKEN
+                - name: GITHUB_INVENTORY_ACCESS_TOKEN
         org:
             description: GitHub organization.
             required: true
@@ -44,6 +44,8 @@ DOCUMENTATION = '''
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
+            env:
+                - name: GITHUB_INVENTORY_REGEX_GROUP_FILTER
         show_archived_repos:
             description: Exclude archived repos in search, boolean.
             default: false
@@ -191,16 +193,17 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     if not "unassigned" in groupnames:
                         groupnames.append("unassigned")
                 self.logger.debug(f'Name: {project["name"]}')
-                groupnames.append(project['name'])
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
                     hostname = self.inventory.add_host(str(project['name']), group)
 
-                    self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
-                    self.inventory.set_variable(hostname, 'ansible_connection', 'local')
-                    for key, value in project.items():
-                        self.inventory.set_variable(hostname, key, value)
+                self.inventory.set_variable(hostname, 'ansible_host', 'localhost')
+                self.inventory.set_variable(hostname, 'ansible_connection', 'local')
+                for key, value in project.items():
+                    self.inventory.set_variable(hostname, key, value)
+                if team != None:
+                    self.inventory.set_variable(hostname, 'team', team)
 
         except Exception as e:
             self.logger.error(f'Exception: {e}')
