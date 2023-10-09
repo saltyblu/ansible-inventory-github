@@ -31,10 +31,12 @@ DOCUMENTATION = '''
             description: GitHub organization.
             required: true
             env:
-                - name: GITHUB_ORG
+                - name: GITHUB_INVENTORY_ORG
         search_filter:
             description: Repository Filter
             default: ""
+            env:
+                - name: GITHUB_INVENTORY_SEARCH_FILTER
         cache:
             description: The Cache option
             required: false
@@ -42,6 +44,11 @@ DOCUMENTATION = '''
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
+        show_archived_repos:
+            description: Exclude archived repos in search, boolean.
+            default: false
+            env:
+                - name: GITHUB_INVENTORY_ARCHIVED
 '''
 
 EXAMPLES = '''
@@ -114,8 +121,11 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.github_url = str(self.get_option('url'))
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
-        self.repository_filter = str(self.get_option('search_filter'))
+        self.search_filter = str(self.get_option('search_filter'))
         self.regex_filter = str(self.get_option('regex_filter'))
+        self.archived = bool(self.get_option('show_archived_repos'))
+        self.repository_filter=f"{self.search_filter} archived:{self.archived}"
+
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
             try:
