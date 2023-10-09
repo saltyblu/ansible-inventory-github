@@ -21,22 +21,22 @@ DOCUMENTATION = '''
             description: GitHub URL.
             default: 'https://github.com/'
             env:
-                - name: GITHUB_URL
+                - name: GITHUB_INVENTORY_URL
         access_token:
             description: GitHub authentication PAT.
             required: true
             env:
-                - name: GITHUB_ACCESS_TOKEN
+                - name: GITHUB_INVENTORY_ACCESS_TOKEN
         org:
             description: GitHub organization.
             required: true
             env:
-                - name: GITHUB_ORG
-        search_filter:
+                - name: GITHUB_INVENTORY_ORG
+        repository_filter:
             description: Repository Filter
             default: ""
             env:
-                - name: GITHUB_SEARCH_FILTER
+                - name: GITHUB_INVENTORY_SEARCH_FILTER
         cache:
             description: The Cache option
             required: false
@@ -45,7 +45,12 @@ DOCUMENTATION = '''
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
             env:
-                - name: GITHUB_REGEX_FILTER
+                - name: GITHUB_INVENTORY_REGEX_GROUP_FILTER
+        show_archived_repos:
+            description: Exclude archived repos in search, boolean.
+            default: false
+            env:
+                - name: GITHUB_INVENTORY_ARCHIVED
 '''
 
 EXAMPLES = '''
@@ -118,8 +123,10 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.github_url = str(self.get_option('url'))
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
-        self.repository_filter = str(self.get_option('search_filter'))
+        self.repository_filter = str(self.get_option('repository_filter'))
         self.regex_filter = str(self.get_option('regex_filter'))
+        self.archived = bool(self.get_option('show_archived_repos'))
+
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
             try:
@@ -148,7 +155,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         g = Github(self.access_token)
         repos = []
         try:
-            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated")
+            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated", archived=self.archived)
         except Exception as e:
             self.logger.error(f'Caught an Exception while searching: {e}')
             print(
