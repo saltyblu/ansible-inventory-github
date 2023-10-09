@@ -32,7 +32,7 @@ DOCUMENTATION = '''
             required: true
             env:
                 - name: GITHUB_INVENTORY_ORG
-        search_filter:
+        repository_filter:
             description: Repository Filter
             default: ""
             env:
@@ -121,10 +121,9 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.github_url = str(self.get_option('url'))
         self.access_token = str(self.get_option('access_token'))
         self.org = str(self.get_option('org'))
-        self.search_filter = str(self.get_option('search_filter'))
+        self.repository_filter = str(self.get_option('repository_filter'))
         self.regex_filter = str(self.get_option('regex_filter'))
         self.archived = bool(self.get_option('show_archived_repos'))
-        self.repository_filter=f"{self.search_filter} archived:{self.archived}"
 
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
@@ -154,7 +153,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         g = Github(self.access_token)
         repos = []
         try:
-            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated")
+            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated", archived=self.archived)
         except Exception as e:
             self.logger.error(f'Caught an Exception while searching: {e}')
             print(
