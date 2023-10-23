@@ -15,6 +15,7 @@
 ### Fixed
 
 - search_repositories returned duplicates, this was fixed by adding `sort="updated"`
+- linting errors
 
 ### Removed
 

@@ -3,6 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
+from github import Github
+import re
+import logging
+from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable
 
 DOCUMENTATION = '''
     author:
@@ -60,13 +64,6 @@ org: saltyblu
 repository_filter: *-deployment
 '''
 
-from github import Github
-import re
-import logging
-#from ansible.errors import AnsibleError
-from ansible.module_utils.common.text.converters import to_text
-from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable, to_safe_group_name
-
 class InventoryModule(BaseInventoryPlugin, Cacheable):
     ''' Host inventory parser for ansible using GitHub as source. '''
 
@@ -97,7 +94,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         try:
             match = re.findall(regex_filter, repository['name'])
             return match[0]
-        except Exception as e:
+        except Exception:
             return False
 
     def parse(self, inventory, loader, path, cache=True):
@@ -182,7 +179,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 groupnames = []
                 topics = project['topics']
                 team = next((topic for topic in topics if topic.startswith("team-")), None)
-                if team != None:
+                if team is not None:
                     groupnames.append(team)
                 else:
                     groupnames.append("unassigned")
@@ -190,7 +187,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 if self.regex_filter != "":
                     groupnames.append(self.parse_groupname(project, self.regex_filter))
                 else:
-                    if not "unassigned" in groupnames:
+                    if "unassigned" not in groupnames:
                         groupnames.append("unassigned")
                 self.logger.debug(f'Name: {project["name"]}')
                 for groupentry in groupnames:
@@ -202,7 +199,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.inventory.set_variable(hostname, 'ansible_connection', 'local')
                 for key, value in project.items():
                     self.inventory.set_variable(hostname, key, value)
-                if team != None:
+                if team is not None:
                     self.inventory.set_variable(hostname, 'team', team)
 
         except Exception as e:
