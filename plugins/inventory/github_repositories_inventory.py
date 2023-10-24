@@ -7,6 +7,7 @@ from github import Github
 import re
 import logging
 from ansible.plugins.inventory import BaseInventoryPlugin, Cacheable
+from ansible.inventory.group import to_safe_group_name
 
 DOCUMENTATION = '''
     author:
@@ -45,6 +46,11 @@ DOCUMENTATION = '''
             description: The Cache option
             required: false
             default: False
+        group_by_languages:
+            description: Load all language Informations from github Repos and group the repositories by Language
+            default: false
+            env:
+                - name: GITHUB_INVENTORY_GROUP_BY_LANGUAGES
         regex_filter:
             description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
             default: ""
@@ -123,6 +129,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.repository_filter = str(self.get_option('repository_filter'))
         self.regex_filter = str(self.get_option('regex_filter'))
         self.archived = bool(self.get_option('show_archived_repos'))
+        self.group_by_languages = bool(self.get_option('group_by_languages'))
 
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
@@ -161,8 +168,14 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             return
         try:
             for repository in r:
+                repo_raw_data = repository._rawData
+                self.logger.debug(f"Group by Language is: {self.group_by_languages}")
+                if self.group_by_languages:
+                    repo_raw_data['languages'] = repository.get_languages()
+                else:
+                    repo_raw_data['languages'] = None
                 self.logger.debug(f'Counter: {count} - {repository.name}')
-                repos.append(repository._rawData)
+                repos.append(repo_raw_data)
                 count += 1
             return repos
         except Exception as e:
@@ -190,6 +203,10 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     if "unassigned" not in groupnames:
                         groupnames.append("unassigned")
                 self.logger.debug(f'Name: {project["name"]}')
+                if self.group_by_languages:
+                    for key, value in project['languages'].items():
+                        group = self.inventory.add_group(to_safe_group_name(f'{key.lower().replace(" ", "")}', force=True, silent=True))
+                        hostname = self.inventory.add_host(str(project['name']), group)
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
 
