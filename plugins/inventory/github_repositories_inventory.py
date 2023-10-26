@@ -205,7 +205,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.logger.debug(f'Name: {project["name"]}')
                 if self.group_by_languages:
                     for key, value in project['languages'].items():
-                        group = self.inventory.add_group(to_safe_group_name(key))
+                        group = self.inventory.add_group(to_safe_group_name(f'{key.lower().replace(" ", "")}', force=True, silent=True))
                         hostname = self.inventory.add_host(str(project['name']), group)
                 for groupentry in groupnames:
                     group = self.inventory.add_group(str(groupentry).replace("-", "_"))
