@@ -186,8 +186,6 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             # add main group as inventory group
             group = "all"
             for project in r:
-                if not project['name'].startswith(self.repository_filter):
-                    continue
 
                 groupnames = []
                 topics = project['topics']
