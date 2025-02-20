@@ -52,7 +52,7 @@ DOCUMENTATION = '''
             env:
                 - name: GITHUB_INVENTORY_GROUP_BY_LANGUAGES
         regex_filter:
-            description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
+            description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found all regex groups matches will be added as group name for the repository
             default: ""
             env:
                 - name: GITHUB_INVENTORY_REGEX_GROUP_FILTER
@@ -98,8 +98,14 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
 
     def parse_groupname(self, repository, regex_filter):
         try:
-            match = re.findall(regex_filter, repository['name'])
-            return match[0]
+            matches = re.findall(regex_filter, repository['name'])
+            if match:
+                result = []
+                for match in matches:
+                    result.expend(match)
+                return result
+            else:
+                return False
         except Exception:
             return False
 
@@ -196,7 +202,10 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                     groupnames.append("unassigned")
 
                 if self.regex_filter != "":
-                    groupnames.append(self.parse_groupname(project, self.regex_filter))
+                    regex_groups = self.parse_groupname(project, self.regex_filter)
+                    if regex_groups:
+                        for group in regex_group:
+                            groupnames.append(group)
                 else:
                     if "unassigned" not in groupnames:
                         groupnames.append("unassigned")
