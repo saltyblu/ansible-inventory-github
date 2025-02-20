@@ -96,17 +96,18 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.display.vvv('Skipping due to inventory source not ending with "github_repositories.yaml/.yml"')
         return valid
 
-    def parse_groupname(self, repository, regex_filter):
+    def parse_groupnames(self, repository, regex_filter):
         try:
             matches = re.findall(regex_filter, repository['name'])
-            if match:
+            if matches:
                 result = []
                 for match in matches:
-                    result.expend(match)
+                    result.extend(match)
                 return result
             else:
                 return False
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f'Exception while parsing groups: {e}')
             return False
 
     def parse(self, inventory, loader, path, cache=True):
@@ -146,7 +147,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 # This occurs if the cache_key is not in the cache or if the cache_key expired, so the cache needs to be updated
                 cache_needs_update = True
                 self.logger.error(f'Exception while Updating cache: {e}')
-        if not attempt_to_read_cache or cache_needs_update or not results:
+        if not attempt_to_read_cache or cache_needs_update:
             self.logger.debug("Not attempting to read cache")
             # parse the provided inventory source
             results = self.get_repositories()
@@ -201,10 +202,11 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 else:
                     groupnames.append("unassigned")
 
+                self.logger.debug(f'regex_filter: {self.regex_filter}')
                 if self.regex_filter != "":
-                    regex_groups = self.parse_groupname(project, self.regex_filter)
+                    regex_groups = self.parse_groupnames(project, self.regex_filter)
                     if regex_groups:
-                        for group in regex_group:
+                        for group in regex_groups:
                             groupnames.append(group)
                 else:
                     if "unassigned" not in groupnames:
