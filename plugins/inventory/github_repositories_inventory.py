@@ -140,7 +140,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 # This occurs if the cache_key is not in the cache or if the cache_key expired, so the cache needs to be updated
                 cache_needs_update = True
                 self.logger.error(f'Exception while Updating cache: {e}')
-        if not attempt_to_read_cache or cache_needs_update:
+        if not attempt_to_read_cache or cache_needs_update or not results:
             self.logger.debug("Not attempting to read cache")
             # parse the provided inventory source
             results = self.get_repositories()
