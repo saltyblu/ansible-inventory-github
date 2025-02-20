@@ -52,7 +52,7 @@ DOCUMENTATION = '''
             env:
                 - name: GITHUB_INVENTORY_GROUP_BY_LANGUAGES
         regex_filter:
-            description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found the first match will be the group name for the repository
+            description: A regexp which allows grouping of the inventory. For that the pattern will be applied on the repository.name and if a match is found all regex groups matches will be added as group name for the repository
             default: ""
             env:
                 - name: GITHUB_INVENTORY_REGEX_GROUP_FILTER
@@ -96,11 +96,18 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 self.display.vvv('Skipping due to inventory source not ending with "github_repositories.yaml/.yml"')
         return valid
 
-    def parse_groupname(self, repository, regex_filter):
+    def parse_groupnames(self, repository, regex_filter):
         try:
-            match = re.findall(regex_filter, repository['name'])
-            return match[0]
-        except Exception:
+            matches = re.findall(regex_filter, repository['name'])
+            if matches:
+                result = []
+                for match in matches:
+                    result.extend(match)
+                return result
+            else:
+                return False
+        except Exception as e:
+            self.logger.debug(f'Exception while parsing groups: {e}')
             return False
 
     def parse(self, inventory, loader, path, cache=True):
@@ -195,8 +202,12 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                 else:
                     groupnames.append("unassigned")
 
+                self.logger.debug(f'regex_filter: {self.regex_filter}')
                 if self.regex_filter != "":
-                    groupnames.append(self.parse_groupname(project, self.regex_filter))
+                    regex_groups = self.parse_groupnames(project, self.regex_filter)
+                    if regex_groups:
+                        for group in regex_groups:
+                            groupnames.append(group)
                 else:
                     if "unassigned" not in groupnames:
                         groupnames.append("unassigned")
