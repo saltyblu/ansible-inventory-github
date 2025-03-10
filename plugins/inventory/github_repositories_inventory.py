@@ -101,6 +101,8 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             matches = re.findall(regex_filter, repository['name'])
             if matches:
                 result = []
+                main_group = f'main-{matches[0]}'
+                result.append(main_group)
                 for match in matches:
                     result.extend(match)
                 return result
