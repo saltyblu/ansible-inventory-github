@@ -15,6 +15,7 @@ license:
   - BSD-2-Clause
 tags:
   - github
-dependencies: {}
+dependencies:
+  - python: requirements.txt
 repository: https://github.com/saltyblu/ansible-inventory-github.git
 homepage: https://github.com/saltyblu/ansible-inventory-github
