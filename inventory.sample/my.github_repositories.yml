@@ -1,8 +1,10 @@
 ---
-plugin: github_repositories
+plugin: github_repositories_inventory
 url: "https://github.com"
 access_token: "github_pat_123*"
 org: "myorg"
-search_filter: ""
-regex_filter: ^project-\w+
-cache: True
+repository_filter: ""
+regex_filter: "^project-\\w+"
+cache: true
+group_by_languages: false
+show_archived_repos: false
