@@ -1,0 +1,53 @@
+# Minimal pyproject.toml for pytest configuration
+# This Ansible Collection uses requirements.txt for dependency management
+# See: https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html
+
+[build-system]
+requires = ["setuptools>=40.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ansible-inventory-github"
+version = "1.0.0"
+description = "Ansible inventory plugin to manage GitHub repositories as inventory sources"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Volker Schmitz", email = "saltyblu@github.com"},
+    {name = "Martin Soentgenrath", email = "merin80@github.com"},
+]
+requires-python = ">=3.9"
+keywords = ["ansible", "github", "inventory", "plugin"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+]
+
+[project.urls]
+Repository = "https://github.com/saltyblu/ansible-inventory-github.git"
+Homepage = "https://github.com/saltyblu/ansible-inventory-github"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

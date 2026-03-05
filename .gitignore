@@ -3,6 +3,19 @@ inventory/*
 dynamic_inventory.log
 .vscode
 
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache
+test-results.xml
+.coverage
+htmlcov/
+.tox/
+
 # Created by https://www.toptal.com/developers/gitignore/api/ansible,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=ansible,python
 

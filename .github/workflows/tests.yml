@@ -1,0 +1,121 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default for the whole workflow.
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.13'
+  ANSIBLE_VERSION: '11.*'
+
+jobs:
+  tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: pip
+
+    - name: Install dependencies
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -r requirements-dev.txt
+        pip install "ansible==${{ env.ANSIBLE_VERSION }}"
+
+    - name: Run unit tests
+      run: |
+        set -euo pipefail
+        pytest tests/unit/ -v --tb=short
+
+    - name: Generate coverage report
+      run: |
+        set -euo pipefail
+        pytest tests/unit/ --cov=plugins --cov-report=xml --cov-report=term-missing
+
+  lint:
+    name: Linting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: pip
+
+    - name: Install dependencies
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -r requirements-dev.txt
+        pip install "ansible==${{ env.ANSIBLE_VERSION }}"
+
+    - name: Lint with flake8
+      run: |
+        set -euo pipefail
+        flake8 plugins/ tests/ --max-line-length=120 --exclude=__pycache__
+
+    - name: Lint with ansible-lint
+      run: |
+        set -euo pipefail
+        ansible-lint plugins/
+
+    - name: Type check with mypy
+      run: |
+        set -euo pipefail
+        mypy plugins/ --ignore-missing-imports
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: pip
+
+    - name: Install dependencies
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -r requirements-dev.txt
+        pip install "ansible==${{ env.ANSIBLE_VERSION }}"
+
+    - name: Run integration tests
+      run: |
+        set -euo pipefail
+        pytest tests/integration/ -v --tb=short

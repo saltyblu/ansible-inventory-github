@@ -1,0 +1,5 @@
+# Development and testing dependencies for ansible-inventory-github collection
+# This is an alias for requirements-test.txt
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements-test.txt
