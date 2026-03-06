@@ -70,22 +70,122 @@ org: saltyblu
 repository_filter: *-deployment
 '''
 
+
+def get_logger(name, logger=None):
+    """Get or create a logger instance.
+
+    Args:
+        name: Logger name
+        logger: Optional pre-configured logger instance
+
+    Returns:
+        logger instance
+    """
+    if logger is not None:
+        return logger
+    return logging.getLogger(name)
+
+
+class GitHubRepositoryFetcher:
+    """Fetches repositories from GitHub API."""
+
+    def __init__(self, access_token, logger=None, per_page=100):
+        """Initialize the GitHub client.
+
+        Args:
+            access_token: GitHub API token
+            logger: Optional logger instance
+        """
+        self.access_token = access_token
+        self.logger = get_logger('GitHubRepositoryFetcher', logger)
+        self._github_client = None
+        self.per_page = per_page
+
+    @property
+    def github_client(self):
+        """Lazy-load GitHub client."""
+        if self._github_client is None:
+            self._github_client = Github(self.access_token, per_page=self.per_page)
+        return self._github_client
+
+    def set_github_client(self, client):
+        """Set a custom GitHub client (useful for testing)."""
+        self._github_client = client
+
+    def fetch_repositories(
+        self,
+        repository_filter,
+        org,
+        archived=False,
+        group_by_languages=False
+    ):
+        """Fetch repositories from GitHub.
+
+        Args:
+            repository_filter: Search filter string
+            org: GitHub organization
+            archived: Include archived repositories
+            group_by_languages: Include language information
+
+        Returns:
+            List of repository data dictionaries
+        """
+        repos = []
+        try:
+            search_result = self.github_client.search_repositories(
+                query=repository_filter,
+                owner=org,
+                sort="updated",
+                archived=archived
+            )
+        except Exception as e:
+            self.logger.error(f'Exception while searching repositories: {e}')
+            raise
+
+        try:
+            for count, repository in enumerate(search_result, 1):
+                repo_raw_data = dict(getattr(repository, '_rawData', {}))
+                self.logger.debug(f"Group by Language is: {group_by_languages}")
+
+                topics = repo_raw_data.get('topics')
+                if topics is None:
+                    try:
+                        topics = repository.get_topics()
+                    except Exception:
+                        topics = []
+                repo_raw_data['topics'] = topics
+
+                if group_by_languages:
+                    repo_raw_data['languages'] = repository.get_languages()
+                else:
+                    repo_raw_data['languages'] = None
+
+                self.logger.debug(f'Counter: {count} - {repository.name}')
+                repos.append(repo_raw_data)
+
+            return repos
+        except Exception as e:
+            self.logger.error(f'Exception while iterating repositories: {e}')
+            raise
+
+
 class InventoryModule(BaseInventoryPlugin, Cacheable):
     ''' Host inventory parser for ansible using GitHub as source. '''
 
     NAME = 'github_repositories_inventory'
 
-    def __init__(self):
+    def __init__(self, logger=None, fetcher=None):
+        """Initialize the inventory plugin.
+
+        Args:
+            logger: Optional logger instance for testing
+            fetcher: Optional GitHubRepositoryFetcher instance for testing
+        """
         super(InventoryModule, self).__init__()
         self.cache_key = None
         self.connection = None
-        logging.basicConfig(filename="dynamic_inventory.log",
-            filemode='a',
-            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-            datefmt='%H:%M:%S',
-            level=logging.INFO)
-
-        self.logger = logging.getLogger('DynamicInventory')
+        self.logger = get_logger('DynamicInventory', logger)
+        self.fetcher = fetcher
 
     def verify_file(self, path):
         valid = False
@@ -141,6 +241,8 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
         self.archived = bool(self.get_option('show_archived_repos'))
         self.group_by_languages = bool(self.get_option('group_by_languages'))
 
+        results = None
+
         if attempt_to_read_cache:
             self.logger.debug("Attempting to read cache")
             try:
@@ -162,34 +264,28 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             except Exception as e:
                 self.logger.error(f'Exception on Cache Update: {e}')
 
-        self.populate(results)
+        self.populate(results or [])
 
     def get_repositories(self):
-        count = 1
-        g = Github(self.access_token)
-        repos = []
+        """Fetch repositories using GitHubRepositoryFetcher.
+
+        Returns:
+            List of repository data dictionaries
+        """
+        if self.fetcher is None:
+            self.fetcher = GitHubRepositoryFetcher(self.access_token, self.logger)
+
         try:
-            r = g.search_repositories(query=self.repository_filter, owner=self.org, sort="updated", archived=self.archived)
-        except Exception as e:
-            self.logger.error(f'Caught an Exception while searching: {e}')
-            print(
-                f"Error: {e}",
+            return self.fetcher.fetch_repositories(
+                self.repository_filter,
+                self.org,
+                archived=self.archived,
+                group_by_languages=self.group_by_languages
             )
-            return
-        try:
-            for repository in r:
-                repo_raw_data = repository._rawData
-                self.logger.debug(f"Group by Language is: {self.group_by_languages}")
-                if self.group_by_languages:
-                    repo_raw_data['languages'] = repository.get_languages()
-                else:
-                    repo_raw_data['languages'] = None
-                self.logger.debug(f'Counter: {count} - {repository.name}')
-                repos.append(repo_raw_data)
-                count += 1
-            return repos
         except Exception as e:
-            self.logger.error(f'Caught an Exception while iterating Repositories: {e}')
+            self.logger.error(f'Error fetching repositories: {e}')
+            print(f"Error: {e}")
+            return None
 
     def populate(self, r):
         try:
@@ -198,7 +294,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
             for project in r:
 
                 groupnames = []
-                topics = project['topics']
+                topics = project.get('topics', [])
                 team = next((topic for topic in topics if topic.startswith("team-")), None)
                 if team is not None:
                     groupnames.append(team)
@@ -216,7 +312,7 @@ class InventoryModule(BaseInventoryPlugin, Cacheable):
                         groupnames.append("unassigned")
                 self.logger.debug(f'Name: {project["name"]}')
                 if self.group_by_languages:
-                    for key, value in project['languages'].items():
+                    for key, value in (project.get('languages') or {}).items():
                         group = self.inventory.add_group(to_safe_group_name(f'{key.lower().replace(" ", "")}', force=True, silent=True))
                         hostname = self.inventory.add_host(str(project['name']), group)
                 for groupentry in groupnames:

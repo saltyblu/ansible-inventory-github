@@ -1,0 +1,22 @@
+# Development and testing dependencies for ansible-inventory-github collection
+# See: https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html
+#
+# Install with: pip install -r requirements.txt -r requirements-test.txt
+# Or with tox: tox
+
+-r requirements.txt
+
+# Testing
+pytest>=7.0
+pytest-cov>=3.0
+pytest-mock>=3.6
+
+# Code Quality
+ansible-lint>=6.0
+pylint>=2.15
+flake8>=4.0
+
+# Type Checking
+mypy>=1.0
+types-PyYAML
+

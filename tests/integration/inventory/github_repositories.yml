@@ -1,0 +1,14 @@
+# Example inventory configuration for testing
+# This can be used to test the inventory plugin with mock GitHub repositories
+
+plugin: github_repositories_inventory
+access_token: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  # Note: In real usage, use actual vault or environment variables
+url: https://github.com/
+org: test-org
+repository_filter: test-*
+group_by_languages: true
+regex_filter: "(prod|staging)-(.*)"
+show_archived_repos: false
+cache: true
